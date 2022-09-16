@@ -5,35 +5,9 @@ clc;
 %% testing globals
 TEST = 1;
 EYELINK_DEMO = 1;
-
-%% SCREEN SETUP
-% Turn off debugging errors
-Screen('Preference', 'VisualDebugLevel', 0);
-
-% open window with a white background
-% NOTE: rectangle provided to escape full screen mode if testing
-screen = max(Screen('Screens'));
-if (TEST == 1)
-    [win,windowRect] = Screen('OpenWindow',screen,1,[0 0 840 880]);
-else
-    [win,windowRect] = Screen('OpenWindow',screen,1);
-end
-color_white = [255 255 255];
-color_black = BlackIndex(screen);
-Screen('FillRect',win,color_white);
-
-% get screen dimensions
-[screenXpixels,screenYpixels] = Screen('WindowSize',win);
-
-% setup text formatting
-Screen('TextSize', win, 20);
-Screen('TextFont', win, 'Courier');
-
-% hide the cursor
-HideCursor;
-
-% restrict keys
-RestrictKeysForKbCheck([spacebar,key_left,key_right]);
+dummymode = 0;
+minfix = 0;
+MINSCREEN = 0;
 
 %% OpenGL and define parameters %%%%%%%%%%%%%%%%%%%%%%%%%
 Screen('Preference','SkipSyncTests',1);
@@ -42,29 +16,7 @@ KbName('UnifyKeyNames');
 spacebar = KbName('space');
 key_left = KbName('f');
 key_right = KbName('j');
-RestrictKeysForKbCheck([spacebar,key_left,key_right]);
-% add alpha so images can blend
-Screen('BlendFunction', win, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
-
-%% calculate the positions for the waldo target %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-x20 = screenXpixels *.2;
-y20 = screenYpixels *.2;
-x30 = screenXpixels *.3;
-y30 = screenYpixels *.3;
-x50 = screenXpixels/2;
-y50 = screenYpixels/2;
-
-f1.x = x30; f1.y = y30;
-f2.x = x50; f2.y = y30;
-f3.x = x50 + x20; f3.y = y30;
-f4.x = x50 + x20; f4.y = y50; 
-f5.x = x50 + x20; f5.y = y50 + y20; 
-f6.x = x50; f6.y = y50 + y20; 
-f7.x = x30; f7.y = y50 + y20; 
-f8.x = x30; f8.y = y50; 
-
-% save to a map for easier reference
-positions_map = containers.Map({'f1','f2','f3','f4','f5','f6','f7','f8'}, {f1, f2, f3, f4, f5, f6, f7, f8});
+WaitSecs(0.0001);
 
 %% define the path %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 filepath = which('eyelink_waldo.m');
@@ -126,6 +78,56 @@ def     = {'DEMO'};
 answer  = inputdlg(prompt,dlg_title,num_lines,def);
 edfFile = answer{1};
 fprintf('EDFFile: %s\n', edfFile )
+
+%% SCREEN SETUP
+% Turn off debugging errors
+Screen('Preference', 'VisualDebugLevel', 0);
+
+% open window with a white background
+% NOTE: rectangle provided to escape full screen mode if testing
+screen = max(Screen('Screens'));
+if (MINSCREEN == 1)
+    [win,windowRect] = Screen('OpenWindow',screen,1,[0 0 840 880]);
+else
+    [win,windowRect] = Screen('OpenWindow',screen,1);
+end
+color_white = [255 255 255];
+color_black = BlackIndex(screen);
+Screen('FillRect',win,color_white);
+
+% get screen dimensions
+[screenXpixels,screenYpixels] = Screen('WindowSize',win);
+
+% setup text formatting
+Screen('TextSize', win, 20);
+Screen('TextFont', win, 'Courier');
+
+% hide the cursor
+HideCursor;
+
+% add alpha so images can blend
+Screen('BlendFunction', win, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
+
+%% calculate the positions for the waldo target %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+x20 = screenXpixels *.2;
+y20 = screenYpixels *.2;
+x30 = screenXpixels *.3;
+y30 = screenYpixels *.3;
+x50 = screenXpixels/2;
+y50 = screenYpixels/2;
+
+f1.x = x30; f1.y = y30;
+f2.x = x50; f2.y = y30;
+f3.x = x50 + x20; f3.y = y30;
+f4.x = x50 + x20; f4.y = y50; 
+f5.x = x50 + x20; f5.y = y50 + y20; 
+f6.x = x50; f6.y = y50 + y20; 
+f7.x = x30; f7.y = y50 + y20; 
+f8.x = x30; f8.y = y50; 
+
+% save to a map for easier reference
+positions_map = containers.Map({'f1','f2','f3','f4','f5','f6','f7','f8'}, {f1, f2, f3, f4, f5, f6, f7, f8});
+
 
 %% Eyelink SETTINGS AND CALIBRATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -224,6 +226,7 @@ end
 EyelinkDoTrackerSetup(el);
 
 %% PRACTICE TRIALS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+RestrictKeysForKbCheck([spacebar,key_left,key_right]);
 
 % Define Trial Variables
 Eyelink('Message', 'TRIAL_VAR_LABELS POSITION TRIAL_NUM');
@@ -256,6 +259,12 @@ if ~TEST || EYELINK_DEMO
     rand_position_vector = rand_position_vector(randperm(length(rand_position_vector)));
     
     for i = 1:8
+        current_position = rand_position_vector(i);
+    
+        position_map_key = "f" + int2str(current_position);
+        positionX_middle = positions_map(position_map_key).x;
+        positionY_middle = positions_map(position_map_key).y;
+
         % load study image, convert to texture
         backgroundTexture = Screen('MakeTexture',win,practiceBackgroundImg);
         targetTexture = Screen('MakeTexture',win,targetImg);
@@ -425,7 +434,7 @@ if ~TEST || EYELINK_DEMO
         Eyelink('Message', '!V IAREA RECTANGLE 2 %d %d %d %d cross', centerFixationWindow(1), centerFixationWindow(2), centerFixationWindow(3), centerFixationWindow(4));
 
         % Define trial vars
-        Eyelink('Message', '!V TRIAL_VAR TRIAL_NUM %d', trial_id);
+        Eyelink('Message', '!V TRIAL_VAR TRIAL_NUM %d', i);
         Eyelink('Message', '!V TRIAL_VAR POSITION %d', current_position);
 
          % INDICATE END OF TRIAL
