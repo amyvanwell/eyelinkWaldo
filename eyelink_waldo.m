@@ -3,10 +3,10 @@ clc;
 %% WHERE'S WALDO EXPERIMENT FOR EYELINK %%%%%%%
 
 %% testing globals
-TEST = 1;
-EYELINK_DEMO = 1;
+TEST = 0;
+EYELINK_DEMO = 0;
 dummymode = 0;
-minfix = 0;
+minfix = 1;
 MINSCREEN = 0;
 
 %% OpenGL and define parameters %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -42,7 +42,7 @@ session = 0;
 
 % get participant number
 if TEST == 1
-    pnum = 1;
+    pnum = '999';
 else
     prompt = {'Participant Number'};
     pinfo = inputdlg(prompt,'Participant information');
@@ -68,6 +68,8 @@ fprintf(datafilepointer, 'pnum\ttarget_location\trt_space\trt_click\tcorrect\tba
 backgrounds = textread('backgrounds.txt','%s');
 % randomize the backgrounds
 rand_backgrounds = backgrounds(randperm(length(backgrounds)));
+num_backgrounds = length(rand_backgrounds);
+totalTrials = num_backgrounds * 8 + 8;
 
 % create an eyelink file name from participant number
 cd(eyelinkdir);
@@ -128,7 +130,6 @@ f8.x = x30; f8.y = y50;
 % save to a map for easier reference
 positions_map = containers.Map({'f1','f2','f3','f4','f5','f6','f7','f8'}, {f1, f2, f3, f4, f5, f6, f7, f8});
 
-
 %% Eyelink SETTINGS AND CALIBRATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % set up screen settings
@@ -179,7 +180,7 @@ if i~=0
     return;
 end
 
-% SET UP TRACKER CONFIGURATION
+%% EYELINK CONFIGURATION
     % Setting the proper recording resolution, proper calibration type,
     % as well as the data file content;
     Eyelink('command', 'add_file_preamble_text ''Recorded by EyelinkToolbox demo-experiment''');
@@ -225,13 +226,53 @@ end
 % enter Eyetracker camera setup mode, perform calibration and validation
 EyelinkDoTrackerSetup(el);
 
-%% PRACTICE TRIALS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-RestrictKeysForKbCheck([spacebar,key_left,key_right]);
-
 % Define Trial Variables
 Eyelink('Message', 'TRIAL_VAR_LABELS POSITION TRIAL_NUM');
 % Group Trials By Position in Data Viewer
 Eyelink('Message', 'V_TRIAL_GROUPING POSITION');
+
+%% INSTRUCTIONS
+% Present text indicating experiment will now begin
+DrawFormattedText(win, 'Thank you for participating in the calibration of the Eyelink system. We will now proceed to the experiment.\n Press any key to continue.', 'center', 'center', color_black);
+% flip the window to display the text
+Screen('Flip', win);
+% Dismiss text with keyboard response
+KbStrokeWait;
+
+% Present instructions
+DrawFormattedText(win, 'The current task is very simple. You will perform 10 groups of 8 trials. \n\n Each trial has three parts: \n\n1: Central cross fixation. There will be a black cross in the center of the screen at the beginning of each trial. \nTo proceed to part two, we must record 500ms of consecutive fixation on this cross. \nIn other words, you have to look at the center cross for half a second to proceed to part two.\n', 'center', 'center', color_black);
+Screen('Flip', win);
+KbStrokeWait;
+
+DrawFormattedText(win, '\n 2: Wheres Waldo Search. After you have held your gaze on the cross for 500ms, a classic Waldo background will appear on the screen. \nAn example background is shown above.\n', 'center', screenYpixels/2 + 300, color_black);
+sampleBackgroundImg = imread(strcat(stimdir, 'background1.jpeg'));
+sampleBackgroundTexture = Screen('MakeTexture',win,sampleBackgroundImg);
+Screen('DrawTexture', win, sampleBackgroundTexture, [], [screenXpixels/2-500 screenYpixels/2-300 screenXpixels/2+500 screenYpixels/2+200])
+Screen('Flip', win);
+KbStrokeWait;
+
+DrawFormattedText(win, '\n 2: Wheres Waldo Search. \nOnce the background appears, your task is to find the Waldo target on the screen. \nAn example Waldo is shown above. \nOnce you find him on the background, you must PRESS THE SPACEBAR. \nOnce you press the SPACEBAR, you will proceed to the last part of the trial.', 'center', screenYpixels/2 + 100, color_black);
+[sampleWaldoImg, ~, alpha] = imread(strcat(stimdir, 'waldo_small.png'));
+sampleWaldoImg(:, :, 4) = alpha;
+sampleWaldoTexture = Screen('MakeTexture',win,sampleWaldoImg);
+Screen('DrawTexture', win, sampleWaldoTexture, [], [screenXpixels/2-50 screenYpixels/2-200 screenXpixels/2+50 screenYpixels/2])
+Screen('Flip', win);
+KbStrokeWait;
+
+DrawFormattedText(win, '\n 3: Waldo Target Location. \nAfter you press the spacebar, the Waldo target will disappear but the background will stay. \nOn this screen, you need to use the MOUSE to CLICK on the location that Waldo was!\n When you CLICK the MOUSE, the trial has completed and you will move on to the next trial. \n\nYou will know that you are on the next trial when the black cross re-appears.', 'center', 'center', color_black);
+Screen('Flip', win);
+KbStrokeWait;
+
+DrawFormattedText(win, '\n We will now proceed to 8 practice trials. During the practice, we will give you feedback on whether the mouse click is correct or not.\n As a reminder, trials are composed of 3 parts: \n\n1: CROSS FIXATION: stare a centered cross for 500ms, until it disappears. \n\n2: WALDO SEARCH: Look for a Waldo target on a busy background. PRESS THE SPACEBAR once you found him.\n\n 3:WALDO LOCATION IDENTIFCATION: Once you have found Waldo, CLICK YOUR MOUSE on the location that you just saw him!', 'center', 'center', color_black);
+Screen('Flip', win);
+KbStrokeWait;
+
+DrawFormattedText(win, '\n Have any questions? Please ask! \n Press any key to proceed to practice trials.', 'center', 'center', color_black);
+Screen('Flip', win);
+KbStrokeWait;
+
+%% PRACTICE TRIALS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+RestrictKeysForKbCheck([spacebar,key_left,key_right]);
 
 % Present text indicating experiment will now begin
 DrawFormattedText(win, 'ONE PRACTICE WALDO BLOCK.\n Press any key to continue.', 'center', 'center', color_black);
@@ -269,10 +310,6 @@ if ~TEST || EYELINK_DEMO
         backgroundTexture = Screen('MakeTexture',win,practiceBackgroundImg);
         targetTexture = Screen('MakeTexture',win,targetImg);
     
-        % draw the fixation cross and display it
-%         DrawFormattedText(win,'+','center','center',color_black);
-%         Screen('Flip',win);
-%         WaitSecs(0.250);
 
         %% SET UP FIXATION WINDOWS
         % Define a fixation box corresponding to the fixation dot
@@ -284,168 +321,18 @@ if ~TEST || EYELINK_DEMO
         % supplies the title at the bottom of the eyetracker display and draws
         % to Eyelink screen during experiment
         if (minfix==1)
-            Eyelink('Command', 'record_status_message "Trial %d/%d - Cross Portion"', i, 9);
-            % draw a cross and fixation box, visible in DataViewer
-            Eyelink('Command', 'clear_screen 0')
-            Eyelink('command', 'draw_cross %d %d 15', screenXpixels/2, screenYpixels/2);
-
-           % draw fixation cross
-           % increase text size for proper cross formatting
-           Screen('TextSize', win, 40);
-           DrawFormattedText(win,'+','center','center',color_black);
-           Screen('Flip',win);
-
-            % start eyelink system
-            Eyelink('StartRecording')
-            %record a few samples before we actually start
-            WaitSecs(0.1);
-            eye_used = Eyelink('EyeAvailable');
-            if eye_used == 2 %binocular
-                eye_used = 1; % use the right eye data
-            end
-
-            % sync to beginning of checking for gaze
-            Eyelink('Message', 'SYNCTIME')
-
-           %WAIT TO PROCEED UNTIL 500MS OF CROSS FIXATION HAS BEEN REGISTERED
-           fixationDuration = 0;
-           fixationStart = GetSecs;
-           while (fixationDuration < 0.50)
-            % CHECK IF STILL RECORDING
-               error = Eyelink('CheckRecording');
-               if error~=0
-                   disp('Error in Recording');
-                   break;
-               end
-
-              % Get eye gaze position info
-              if Eyelink( 'NewFloatSampleAvailable') > 0
-                            % get the sample in the form of an event structure
-                            evt = Eyelink( 'NewestFloatSample');
-                            evt.gx
-                            evt.gy
-                            if eye_used ~= -1 % do we know which eye to use yet?
-                                % if we do, get current gaze position from sample
-                                x = evt.gx(eye_used+1); % +1 as we're accessing MATLAB array
-                                y = evt.gy(eye_used+1);
-                                % do we have valid data and is the pupil visible?
-                                if x~=el.MISSING_DATA && y~=el.MISSING_DATA && evt.pa(eye_used+1)>0
-
-                                    %fprintf('IN THE LOOP FOR NOT MISSING DATA')
-                                    fprintf('%d = x and %d = y', x,y )
-                                    fprintf( 'Fixation window is %d %d %d %d', centerFixationWindow(1),  centerFixationWindow(2),centerFixationWindow(3),centerFixationWindow(4))
-
-                                    mx=x;
-                                    my=y;
-                                end
-
-                                % Check if the current gaze position is within
-                                % a fixation window around the center cross
-                                if ~infixationWindow(centerFixationWindow, x, y)
-                                    % if not in the fixation window, restart
-                                    % the timer and set duration to zero
-                                    fixationDuration = 0;
-                                    fixationStart = GetSecs;
-                                else
-                                    % if in window, increase the counters
-                                    fixationDuration = GetSecs - fixationStart;
-                                end
-                            end
-              end
-           end
-
-           % WRITE TO EYELINK
-            WaitSecs(0.001);
-            % Defining interest area
-            Eyelink('Message', '!V IAREA RECTANGLE 2 %d %d %d %d cross', centerFixationWindow(1), centerFixationWindow(2), centerFixationWindow(3), centerFixationWindow(4));
-
-            % Define trial vars
-            Eyelink('Message', '!V TRIAL_VAR TRIAL_NUM %d', i);
-            Eyelink('Message', '!V TRIAL_VAR POSITION CROSS');
-
-             % INDICATE END OF TRIAL
-            Eyelink('Message', 'TRIAL_RESULT 0'); 
-            WaitSecs(0.001);
-
-           Eyelink('StopRecording');
-           WaitSecs(0.001);
-
-
-           if (TEST ==1)
-                DrawFormattedText(win, 'Minimum gaze detected. Press any key to continue.', 'center', 'center', color_black);
-                % flip the window to display the text
-                 Screen('Flip', win);
-
-                % Dismiss text with keyboard response
-                KbStrokeWait;
-          end
+            fixationCross(0.500, centerFixationWindow, i, screenXpixels, screenYpixels, win,  color_black, el)
+        else
+            % draw the fixation cross and display it
+            DrawFormattedText(win,'+','center','center',color_black);
+            Screen('Flip',win);
+            WaitSecs(0.50);
         end
     
         %% PART TWO OF TRIAL: VISUAL SEARCH
-        % send a 'trialID' message to mark the start of a trial in Data Viewer
-        Eyelink('Message', 'Trial %d', i);
-        % supplies the title at the bottom of the eyetracker display and draws
-        % to Eyelink screen during experiment
-        Eyelink('Command', 'record_status_message "Trial %d/%d"', i, 8);
-        % draw a cross and fixation box, visible in DataViewer
-        Eyelink('Command', 'clear_screen 0')
-        Eyelink('command', 'draw_cross %d %d 15', screenXpixels/2, screenYpixels/2);
-        Eyelink('command', 'draw_box %d %d %d %d 15', fixationWindow(1), fixationWindow(2), fixationWindow(3), fixationWindow(4));              
-       
-        % start eyelink system
-        Eyelink('StartRecording');
-        
-        % determine which eye is being used
-        eye_used = Eyelink('EyeAvailable');
-        if eye_used == 2 %binocular
-            eye_used = 1; % use the right eye data
-        end
-
-        %record a few samples before we actually start
-        WaitSecs(0.1);
-
-        Screen('DrawTexture', win, backgroundTexture)
-        current_position = rand_position_vector(i);
-    
-        position_map_key = "f" + int2str(current_position);
-        positionX_middle = positions_map(position_map_key).x;
-        positionY_middle = positions_map(position_map_key).y;
-        Screen('DrawTexture', win, targetTexture, [], [positionX_middle-25 positionY_middle-55 positionX_middle+25 positionY_middle+55])
-
-        Screen('Flip',win);
-       
-        startSecs = GetSecs;
-        % Dismiss text with keyboard response
-        % wait for key press
-        while ~KbCheck()
-        end
-        % wait for release
-        while KbCheck()
-        end
-        endSecs = GetSecs;
-        rt_space = endSecs - startSecs;
-
-        %% STOP RECORDING AFTER SPACE BAR PRESS
-
-        % WRITE TO EYELINK
-        WaitSecs(0.001);
-        % Defining interest area
-        Eyelink('Message', '!V IAREA RECTANGLE 1 %d %d %d %d waldo', fixationWindow(1), fixationWindow(2), fixationWindow(3), fixationWindow(4));
-        Eyelink('Message', '!V IAREA RECTANGLE 2 %d %d %d %d cross', centerFixationWindow(1), centerFixationWindow(2), centerFixationWindow(3), centerFixationWindow(4));
-
-        % Define trial vars
-        Eyelink('Message', '!V TRIAL_VAR TRIAL_NUM %d', i);
-        Eyelink('Message', '!V TRIAL_VAR POSITION %d', current_position);
-
-         % INDICATE END OF TRIAL
-        Eyelink('Message', 'TRIAL_RESULT 0'); 
-        WaitSecs(0.001);
-        
-        Eyelink('StopRecording');
-        WaitSecs(0.001);
+        [rt_space, endSecs] = waldoSearch(current_position, backgroundTexture, targetTexture, i, totalTrials, fixationWindow, centerFixationWindow, screenXpixels, screenYpixels, win, positions_map);
     
         %% PART THREE: MOUSE RESPONSE
-
         % revert text size back to 20 for actual text
            Screen('TextSize', win, 20);
 
@@ -500,10 +387,19 @@ end
 while KbCheck()
 end
 
-num_backgrounds = length(rand_backgrounds);
-
 if ~EYELINK_DEMO
     for i = 1:num_backgrounds
+
+        if i >1
+            % Present text indicating experiment will now begin
+            displayText = sprintf('You have completed a block of trials. You have completed %d of %d groups. \n\nIf you need to rest your eyes, you may close them for a few moments.\n Please do not shift your position in the chin rest.\n\nPress any key to proceed to the next group of trials, when you are ready.', i-1, num_backgrounds);
+            DrawFormattedText(win, displayText, 'center', 'center', color_black);
+            % flip the window to display the text
+            Screen('Flip', win);
+            % Dismiss text with keyboard response
+            KbStrokeWait;
+        end
+
         DrawFormattedText(win, 'Starting a new block of trials.\n Press any key to continue.', 'center', 'center', color_black);
         Screen('Flip', win);
         % Dismiss text with keyboard response
@@ -529,35 +425,42 @@ if ~EYELINK_DEMO
         % random permeation of 8 locations
         rand_position_vector = [1:8];
         rand_position_vector = rand_position_vector(randperm(length(rand_position_vector)));
-    
-        for i = 1:8
-        
-            % draw the fixation cross and display it
-            DrawFormattedText(win,'+','center','center',color_black);
-            Screen('Flip',win);
-            WaitSecs(0.250);
-        
-            % draw image
-            Screen('DrawTexture', win, backgroundTexture)
-            current_position = rand_position_vector(i);
-        
+
+   
+        for j = 1:8
+
+            trialNum = i * 8 + j;
+            current_position = rand_position_vector(j);
+
+            %% SET UP FIXATION WINDOWS
             position_map_key = "f" + int2str(current_position);
             positionX_middle = positions_map(position_map_key).x;
             positionY_middle = positions_map(position_map_key).y;
-            Screen('DrawTexture', win, targetTexture, [], [positionX_middle-25 positionY_middle-55 positionX_middle+25 positionY_middle+55]);
-            Screen('Flip',win);
-           
-            startSecs = GetSecs;
-            % Dismiss text with keyboard response
-            % wait for key press
-            while ~KbCheck()
-            end
-            % wait for release
-            while KbCheck()
-            end
-            endSecs = GetSecs;
-            rt_space = endSecs - startSecs;
+            
+            % Define a fixation box corresponding to the fixation dot
+            baseRect = [0 0 100 100];
+            fixationWindow = CenterRectOnPointd(baseRect, positionX_middle, positionY_middle);        
+            centerFixationWindow = CenterRect(baseRect, windowRect);
         
+            %% PART ONE OF TRIAL : CROSS TRIAL / 500 MIN DURATION
+            % supplies the title at the bottom of the eyetracker display and draws
+            % to Eyelink screen during experiment
+            if (minfix==1)
+                fixationCross(0.500, centerFixationWindow, trialNum, screenXpixels, screenYpixels, win, color_black, el)
+            else
+                % draw the fixation cross and display it
+                DrawFormattedText(win,'+','center','center',color_black);
+                Screen('Flip',win);
+                WaitSecs(0.50);
+            end
+        
+            %% PART TWO OF TRIAL: VISUAL SEARCH
+            [rt_space, endSecs] = waldoSearch(current_position, backgroundTexture, targetTexture, trialNum, totalTrials, fixationWindow, centerFixationWindow, screenXpixels, screenYpixels, win, positions_map);
+
+            %% PART THREE: MOUSE RESPONSE
+            % revert text size back to 20 for actual text
+               Screen('TextSize', win, 20);
+    
             % draw just the background
             Screen('DrawTexture', win, backgroundTexture)
             Screen('Flip',win);
@@ -570,15 +473,13 @@ if ~EYELINK_DEMO
         
             correct = 0;
             if (x < positionX_middle + 50 && x > positionX_middle - 50 && y < positionY_middle + 100 && y > positionY_middle - 100)
-                disp("correct")
                 correct = 1;
-            else
-                disp("incorrect")
             end
         
-            HideCursor; 
+            Screen('Flip', win);
+            HideCursor;
         
-          %% SAVE PRACTICE TRIAL DATA
+          %% SAVE REAL TRIAL DATA
             fprintf(datafilepointer, '%s\t%i\t%i\t%i\t%i\t%s\r\n',...
            pnum,...
            current_position,...
@@ -587,9 +488,21 @@ if ~EYELINK_DEMO
            correct,...
            curr_background);
         end
-    
+
+        %% test mode, only show one full block
+        if TEST == 1
+            break;
+        end
     end
 end
+
+%%  END TEXT
+% Present text indicating experiment will now begin
+DrawFormattedText(win, 'You have finished the experiment! Please get up and let the RA know you are finished.', 'center', 'center', color_black);
+% flip the window to display the text
+Screen('Flip', win);
+% Dismiss text with keyboard response
+KbStrokeWait;
 
 %% End Experiment %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -634,4 +547,165 @@ function fix = infixationWindow(fixationWindow, mx,my)
         fix = mx > fixationWindow(1) &&  mx <  fixationWindow(3) && ...
             my > fixationWindow(2) && my < fixationWindow(4) ;
     end
+    
+function fixationCross(time, centerFixationWindow,trialNum, screenXpixels, screenYpixels, win, color_black, el)
+    Eyelink('Command', 'record_status_message "Trial %d/%d - Cross Portion"', trialNum, 9);
+    % draw a cross and fixation box, visible in DataViewer
+    Eyelink('Command', 'clear_screen 0')
+    Eyelink('command', 'draw_cross %d %d 15', screenXpixels/2, screenYpixels/2);
 
+   % draw fixation cross
+   % increase text size for proper cross formatting
+   Screen('TextSize', win, 40);
+   DrawFormattedText(win,'+','center','center',color_black);
+   Screen('Flip',win);
+
+    % start eyelink system
+    Eyelink('StartRecording')
+    %record a few samples before we actually start
+    WaitSecs(0.1);
+    eye_used = Eyelink('EyeAvailable');
+    if eye_used == 2 %binocular
+        eye_used = 1; % use the right eye data
+    end
+
+    % sync to beginning of checking for gaze
+    Eyelink('Message', 'SYNCTIME')
+
+   %WAIT TO PROCEED UNTIL 500MS OF CROSS FIXATION HAS BEEN REGISTERED
+   fixationDuration = 0;
+   fixationStart = GetSecs;
+   while (fixationDuration < time)
+    % CHECK IF STILL RECORDING
+       error = Eyelink('CheckRecording');
+       if error~=0
+           disp('Error in Recording');
+           break;
+       end
+
+      % Get eye gaze position info
+      if Eyelink( 'NewFloatSampleAvailable') > 0
+                    % get the sample in the form of an event structure
+                    evt = Eyelink( 'NewestFloatSample');
+                    evt.gx
+                    evt.gy
+                    if eye_used ~= -1 % do we know which eye to use yet?
+                        % if we do, get current gaze position from sample
+                        x = evt.gx(eye_used+1); % +1 as we're accessing MATLAB array
+                        y = evt.gy(eye_used+1);
+                        % do we have valid data and is the pupil visible?
+                        if x~=el.MISSING_DATA && y~=el.MISSING_DATA && evt.pa(eye_used+1)>0
+
+                            %fprintf('IN THE LOOP FOR NOT MISSING DATA')
+                            fprintf('%d = x and %d = y', x,y )
+                            fprintf( 'Fixation window is %d %d %d %d', centerFixationWindow(1),  centerFixationWindow(2),centerFixationWindow(3),centerFixationWindow(4))
+
+                            mx=x;
+                            my=y;
+                        end
+
+                        % Check if the current gaze position is within
+                        % a fixation window around the center cross
+                        if ~infixationWindow(centerFixationWindow, x, y)
+                            % if not in the fixation window, restart
+                            % the timer and set duration to zero
+                            fixationDuration = 0;
+                            fixationStart = GetSecs;
+                        else
+                            % if in window, increase the counters
+                            fixationDuration = GetSecs - fixationStart;
+                        end
+                    end
+      end
+   end
+
+   % WRITE TO EYELINK
+    WaitSecs(0.001);
+    % Defining interest area
+    Eyelink('Message', '!V IAREA RECTANGLE 2 %d %d %d %d cross', centerFixationWindow(1), centerFixationWindow(2), centerFixationWindow(3), centerFixationWindow(4));
+
+    % Define trial vars
+    Eyelink('Message', '!V TRIAL_VAR TRIAL_NUM %d', trialNum);
+    Eyelink('Message', '!V TRIAL_VAR POSITION CROSS');
+
+     % INDICATE END OF TRIAL
+    Eyelink('Message', 'TRIAL_RESULT 0'); 
+    WaitSecs(0.001);
+
+   Eyelink('StopRecording');
+   WaitSecs(0.001);
+
+
+%    if (TEST ==1)
+%         DrawFormattedText(win, 'Minimum gaze detected. Press any key to continue.', 'center', 'center', color_black);
+%         % flip the window to display the text
+%          Screen('Flip', win);
+% 
+%         % Dismiss text with keyboard response
+%         KbStrokeWait;
+%    end
+end
+
+function [rt_space, endSecs] = waldoSearch(location, backgroundTexture, targetTexture, trialNum, totalTrials, fixationWindow, centerFixationWindow, screenXpixels, screenYpixels, win, positions_map)
+    % send a 'trialID' message to mark the start of a trial in Data Viewer
+        Eyelink('Message', 'Trial %d', trialNum);
+        % supplies the title at the bottom of the eyetracker display and draws
+        % to Eyelink screen during experiment
+        Eyelink('Command', 'record_status_message "Trial %d/%d"', trialNum, totalTrials);
+        % draw a cross and fixation box, visible in DataViewer
+        Eyelink('Command', 'clear_screen 0')
+        Eyelink('command', 'draw_cross %d %d 15', screenXpixels/2, screenYpixels/2);
+        Eyelink('command', 'draw_box %d %d %d %d 15', fixationWindow(1), fixationWindow(2), fixationWindow(3), fixationWindow(4));              
+       
+        % start eyelink system
+        Eyelink('StartRecording');
+        
+        % determine which eye is being used
+        eye_used = Eyelink('EyeAvailable');
+        if eye_used == 2 %binocular
+            eye_used = 1; % use the right eye data
+        end
+
+        %record a few samples before we actually start
+        WaitSecs(0.1);
+
+        Screen('DrawTexture', win, backgroundTexture)
+        current_position = location;
+    
+        position_map_key = "f" + int2str(current_position);
+        positionX_middle = positions_map(position_map_key).x;
+        positionY_middle = positions_map(position_map_key).y;
+        Screen('DrawTexture', win, targetTexture, [], [positionX_middle-25 positionY_middle-55 positionX_middle+25 positionY_middle+55])
+
+        Screen('Flip',win);
+       
+        startSecs = GetSecs;
+        % Dismiss text with keyboard response
+        % wait for key press
+        while ~KbCheck()
+        end
+        % wait for release
+        while KbCheck()
+        end
+        endSecs = GetSecs;
+        rt_space = endSecs - startSecs;
+
+        %% STOP RECORDING AFTER SPACE BAR PRESS
+
+        % WRITE TO EYELINK
+        WaitSecs(0.001);
+        % Defining interest area
+        Eyelink('Message', '!V IAREA RECTANGLE 1 %d %d %d %d waldo', fixationWindow(1), fixationWindow(2), fixationWindow(3), fixationWindow(4));
+        Eyelink('Message', '!V IAREA RECTANGLE 2 %d %d %d %d cross', centerFixationWindow(1), centerFixationWindow(2), centerFixationWindow(3), centerFixationWindow(4));
+
+        % Define trial vars
+        Eyelink('Message', '!V TRIAL_VAR TRIAL_NUM %d', trialNum);
+        Eyelink('Message', '!V TRIAL_VAR POSITION %d', current_position);
+
+         % INDICATE END OF TRIAL
+        Eyelink('Message', 'TRIAL_RESULT 0'); 
+        WaitSecs(0.001);
+        
+        Eyelink('StopRecording');
+        WaitSecs(0.001);
+end

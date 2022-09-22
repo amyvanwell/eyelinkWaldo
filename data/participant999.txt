@@ -1,0 +1,9 @@
+pnum	target_location	rt_space	rt_click	correct	background
+999	3	5.940923e+00	1.366451e+00	0	background7.png
+999	4	8.537290e-01	1.286100e+00	0	background7.png
+999	5	6.536999e-01	1.168171e+00	0	background7.png
+999	2	3.979630e-01	8.255789e-01	0	background7.png
+999	6	4.119189e-01	8.160970e-01	0	background7.png
+999	8	4.214580e-01	7.338860e-01	0	background7.png
+999	7	4.059620e-01	7.354212e-01	0	background7.png
+999	1	4.032969e-01	7.367389e-01	0	background7.png
