@@ -1,0 +1,1 @@
+pnum	target_location	rt_space	rt_click	correct	background
